@@ -1,0 +1,444 @@
+/* ==========================================================================
+   Fold device — pure CSS 3D.
+   A single scalar (--p, written by GSAP) drives the whole scene.
+   ========================================================================== */
+
+/* The scope owns every derived channel. Anything inside inherits the whole
+   system, so a device, its app UI and the surrounding copy all stay in sync. */
+.fold-scope {
+  --p: 0;
+  --pe: 0;
+  --fold: 180;
+  --cam-x: 0px;
+  --cam-s: 1;
+  --cam-rx: 0deg;
+  --cam-ry: 0deg;
+  --blur: 0px;
+
+  --panel-w: 300px;
+  --panel-h: 618px;
+  --persp: 2700px;
+  --bezel-x: 10px;
+  --bezel-y: 10px;
+  --r-out: clamp(22px, calc(var(--panel-w) * 0.115), 40px);
+  --r-screen: clamp(16px, calc(var(--panel-w) * 0.088), 32px);
+
+  /* ---- content channels ---- */
+  /* hero element crossing the fold */
+  --t: clamp(0, calc((var(--p) - 0.28) / 0.48), 1);
+  /* single-column hero copy leaving */
+  --t-hero: clamp(0, calc((var(--p) - 0.16) / 0.24), 1);
+  /* list arriving in the left half — starts before the hero copy is fully gone,
+     so the two read as one cross-fade instead of a gap */
+  --t-list: clamp(0, calc((var(--p) - 0.39) / 0.32), 1);
+  /* detail pane arriving in the right half */
+  --t-detail: clamp(0, calc((var(--p) - 0.46) / 0.34), 1);
+  /* cover display dimming as it rotates away */
+  --t-cover: clamp(0, calc((var(--p) - 0.04) / 0.16), 1);
+  /* hinge spine presence */
+  --t-spine: clamp(0, calc(1 - var(--p) / 0.5), 1);
+  /* Crease inside the glass. Overwritten every frame by writeFoldVars, which
+     knows the real curve (it peaks mid-fold and relaxes at 0°). This default
+     only needs to be sane for a static first paint. */
+  --t-crease: 0;
+
+  /* ---- cover → inner hand-off (written by writeFoldVars) ---- */
+  --fly-x0: 150px;
+  --fly-y0: 320px;
+  --fly-w0: 180px;
+  --fly-x1: 500px;
+  --fly-y1: 210px;
+  --fly-w1: 220px;
+  --t-fly: 0;
+  --fly-pop: 1;
+  /* How far the hero is lifted off the glass while airborne. It only has to
+     clear the *opening* panels late in the sweep — early on the flight layer is
+     composited above the camera regardless — so a small lift is enough. */
+  --fly-z: 26px;
+  --fly-floor-op: 0;
+  --fly-bill: 0;
+  /* The hero fades out of the cover and into the flight layer almost
+     immediately — both sit at the same spot, so the swap is invisible. */
+  --t-cover-hero: clamp(0, calc(var(--p) / 0.05), 1);
+  /* …and back out of the flight layer into the real detail pane at the end. */
+  --t-fly-out: clamp(0, calc((var(--p) - 0.9) / 0.08), 1);
+  --t-fly-op: calc(var(--t-cover-hero) * (1 - var(--t-fly-out)));
+  --t-detail-hero: clamp(0, calc((var(--p) - 0.88) / 0.1), 1);
+}
+
+/* --------------------------------------------------------------------------
+   Stage & camera
+   -------------------------------------------------------------------------- */
+
+.fold-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  perspective: var(--persp);
+  perspective-origin: 50% 50%;
+}
+
+.fold-camera {
+  position: relative;
+  width: calc(var(--panel-w) * 2);
+  height: var(--panel-h);
+  transform-style: preserve-3d;
+  transform: translate3d(var(--cam-x), 0, 0) rotateX(var(--cam-rx)) rotateY(var(--cam-ry))
+    scale(var(--cam-s));
+  will-change: transform;
+}
+
+.fold-camera--float {
+  animation: fold-float 9s var(--ease-apple, ease-in-out) infinite;
+}
+
+@keyframes fold-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Panels — two rigid planes. The device never resizes; only the hinge moves.
+   -------------------------------------------------------------------------- */
+
+.fold-panel {
+  position: absolute;
+  top: 0;
+  width: var(--panel-w);
+  height: var(--panel-h);
+  transform-style: preserve-3d;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px),
+    linear-gradient(168deg, #202430 0%, #12141b 38%, #0b0d13 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.fold-panel--left {
+  right: 50%;
+  border-radius: var(--r-out) calc(var(--r-out) * 0.18) calc(var(--r-out) * 0.18) var(--r-out);
+  /* Nudge the left half 3px back so the folded halves never z-fight. The hinge
+     line sits on the perspective origin, so the 3px is optically invisible. */
+  transform: translate3d(0, 0, -3px);
+}
+
+.fold-panel--right {
+  left: 50%;
+  transform-origin: left center;
+  border-radius: calc(var(--r-out) * 0.18) var(--r-out) var(--r-out) calc(var(--r-out) * 0.18);
+  transform: rotateY(calc(var(--fold) * -1deg));
+}
+
+/* Inner display. The two halves meet exactly on the hinge — no bezel gap, so
+   the surface reads as one continuous canvas. */
+.panel__screen {
+  position: absolute;
+  top: var(--bezel-y);
+  bottom: var(--bezel-y);
+  overflow: hidden;
+  background: #000;
+  transform: translateZ(0.7px);
+  backface-visibility: hidden;
+  contain: paint;
+}
+
+.fold-panel--left .panel__screen {
+  left: var(--bezel-x);
+  right: 0;
+  border-radius: var(--r-screen) 0 0 var(--r-screen);
+}
+
+.fold-panel--right .panel__screen {
+  left: 0;
+  right: var(--bezel-x);
+  border-radius: 0 var(--r-screen) var(--r-screen) 0;
+}
+
+/* Cover / outer display on the back of the folding half. */
+.panel__outer {
+  position: absolute;
+  inset: 9px;
+  overflow: hidden;
+  background: #000;
+  border-radius: calc(var(--r-screen) * 0.92);
+  transform: rotateY(180deg) translateZ(0.7px);
+  backface-visibility: hidden;
+  contain: paint;
+}
+
+/* The UI layer is 2 panels wide and is drawn twice — once per half — so the
+   same layout is clipped by each plane and stays continuous across the hinge. */
+.panel__screen-inner,
+.panel__outer-inner {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+.panel__screen-inner {
+  width: calc(var(--panel-w) * 2);
+}
+
+.fold-panel--left .panel__screen-inner {
+  left: calc(var(--bezel-x) * -1);
+}
+
+.fold-panel--right .panel__screen-inner {
+  left: calc(var(--panel-w) * -1);
+}
+
+.panel__outer-inner {
+  width: 100%;
+}
+
+/* Glass. Authored on the same 2×panel canvas as the UI so the reflection runs
+   continuously across the hinge instead of restarting on each half. */
+.panel__gloss {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--panel-w) * 2);
+  pointer-events: none;
+  background:
+    linear-gradient(
+      118deg,
+      rgba(255, 255, 255, 0.13) 0%,
+      rgba(255, 255, 255, 0.045) 18%,
+      rgba(255, 255, 255, 0) 42%
+    ),
+    radial-gradient(130% 62% at 84% -14%, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 60%);
+}
+
+.fold-panel--left .panel__gloss {
+  left: calc(var(--bezel-x) * -1);
+}
+
+.fold-panel--right .panel__gloss {
+  left: calc(var(--panel-w) * -1);
+}
+
+/* Crease — a soft darkening that grows in as the glass folds. */
+.panel__crease {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  pointer-events: none;
+  opacity: calc(var(--t-crease) * 0.8);
+}
+
+.fold-panel--left .panel__crease {
+  right: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.62) 100%);
+}
+
+.fold-panel--right .panel__crease {
+  left: 0;
+  background: linear-gradient(270deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.62) 100%);
+}
+
+/* --------------------------------------------------------------------------
+   Hinge — a spine when shut, a hairline when open.
+   -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   Flight layer — the shared element, lifted off the cover display.
+
+   It is a child of the stage, not a child of either panel, but it shares the
+   camera's exact box and transform (same perspective, same rotation), so a
+   point at the same device coordinates still projects to the same pixel as the
+   panels. The whole trick is depth: while the device opens, the folding half
+   is tilted steeply toward the viewer (its far edge reaches ~93px of z at
+   165°), so a hero lifted only a few px off the glass would be *behind* the
+   glass and painted over. The flight layer is a *later* sibling of the camera,
+   so it always composites after it.
+
+   The rest of the fix is clipping. The flight layer carries the same two
+   glass planes as the panels (`.flight-clip`), so nothing the hero does can
+   ever paint over the bezels or out into the background around the device —
+   wherever it travels, it stays inside the projected silhouette of the two
+   screens. Each plane owns one copy of the hero (`.flight__pane`), which keeps
+   every copy automatically inside the same screen clip; the copies are depth-
+   sorted by `--fly-depth` against the hardware, so the hero tucks *behind* the
+   folding glass on the way to the inner display (realistic) and never reads as
+   a sticker floating over the outside of the phone.
+   -------------------------------------------------------------------------- */
+
+.fold-flight {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--panel-w) * 2);
+  height: var(--panel-h);
+  margin: calc(var(--panel-h) * -0.5) 0 0 calc(var(--panel-w) * -1);
+  transform-style: preserve-3d;
+  transform: translate3d(var(--cam-x), 0, 0) rotateX(var(--cam-rx)) rotateY(var(--cam-ry))
+    scale(var(--cam-s));
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* One per panel — the exact same clipped glass geometry the screens use.
+   Left half is rigid; right half swings on the hinge, same as the panels. */
+.flight-clip {
+  position: absolute;
+  top: var(--bezel-y);
+  bottom: var(--bezel-y);
+  overflow: hidden;
+  transform: translateZ(calc(var(--fly-depth) * 1px));
+  contain: paint;
+}
+
+.flight-clip--left {
+  left: var(--bezel-x);
+  right: 0;
+}
+
+.flight-clip--right {
+  left: 0;
+  right: var(--bezel-x);
+  transform-origin: left center;
+  transform: rotateY(calc(var(--fold) * -1deg)) translateZ(calc(var(--fly-depth) * 1px));
+}
+
+.flight-clip .flight__body {
+  left: calc(var(--panel-w) * -1);
+}
+
+.flight__body {
+  /* Position, size and lift are all single scalars between the two endpoints. */
+  --fx: calc(var(--fly-x0) + (var(--fly-x1) - var(--fly-x0)) * var(--t-fly));
+  --fy: calc(var(--fly-y0) + (var(--fly-y1) - var(--fly-y0)) * var(--t-fly));
+  --fw: calc(var(--fly-w0) + (var(--fly-w1) - var(--fly-w0)) * var(--t-fly));
+
+  position: absolute;
+  left: var(--fx);
+  top: var(--fy);
+  width: var(--fw);
+  height: var(--fw);
+  border-radius: calc(var(--fw) * 0.105);
+  overflow: hidden;
+  opacity: var(--t-fly-op);
+  /* Billboard: the hardware rotates, the content does not — but only while it
+     is actually airborne (`--fly-bill` is 0 at both ends), so the hero stays
+     coplanar with the glass at the two hand-off moments instead of floating a
+     few degrees off it. */
+  transform: translate(-50%, -50%) translateZ(calc(var(--fly-z) + 8px))
+    rotateY(calc(var(--cam-ry) * -1 * var(--fly-bill)))
+    rotateX(calc(var(--cam-rx) * -1 * var(--fly-bill))) scale(var(--fly-pop));
+  box-shadow: 0 calc(var(--fw) * 0.09) calc(var(--fw) * 0.24) rgba(0, 0, 0, 0.52);
+  will-change: transform, opacity;
+}
+
+/* Depth of the hero against the glass. Starts in front of the cover (positive),
+   sinks behind the screen plane as the device opens and the hand-off begins. */
+.flight__body--cover {
+  --fly-depth: 12;
+}
+
+.flight__body--air {
+  --fly-depth: -10;
+}
+
+.flight__body .art {
+  position: absolute;
+  inset: 0;
+}
+
+/* Contact shadow, cast back down onto the glass. Fades in as the hero lifts. */
+.flight__floor {
+  --fx: calc(var(--fly-x0) + (var(--fly-x1) - var(--fly-x0)) * var(--t-fly));
+  --fy: calc(var(--fly-y0) + (var(--fly-y1) - var(--fly-y0)) * var(--t-fly));
+  --fw: calc(var(--fly-w0) + (var(--fly-w1) - var(--fly-w0)) * var(--t-fly));
+
+  position: absolute;
+  left: var(--fx);
+  top: var(--fy);
+  width: calc(var(--fw) * 1.04);
+  height: calc(var(--fw) * 1.04);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: var(--fly-floor-op);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.24) 46%,
+    rgba(0, 0, 0, 0) 76%
+  );
+  filter: blur(14px);
+  transform: translate(-50%, -50%) translateZ(1px);
+}
+
+.fold-hinge {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--bezel-y) * -0.6);
+  bottom: calc(var(--bezel-y) * -0.6);
+  width: calc(5px + var(--t-spine) * 13px);
+  transform: translateX(-50%) translateZ(9px);
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    #0c0e13 0%,
+    #2b303b 26%,
+    #4a5160 48%,
+    #23272f 72%,
+    #0a0c11 100%
+  );
+  box-shadow:
+    0 0 26px rgba(0, 0, 0, 0.85),
+    0 0 2px rgba(0, 0, 0, 0.9),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  opacity: calc(0.12 + 0.88 * var(--t-spine));
+}
+
+/* --------------------------------------------------------------------------
+   Environment
+   -------------------------------------------------------------------------- */
+
+.fold-ambient {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--panel-w) * 4.4);
+  height: calc(var(--panel-w) * 3.4);
+  transform: translate(-50%, -50%) scale(calc(0.82 + 0.18 * var(--pe)));
+  pointer-events: none;
+  background:
+    radial-gradient(46% 42% at 50% 46%, rgba(110, 168, 255, 0.16), rgba(110, 168, 255, 0) 70%),
+    radial-gradient(34% 30% at 68% 62%, rgba(255, 178, 107, 0.1), rgba(255, 178, 107, 0) 72%);
+  filter: blur(20px);
+}
+
+.fold-shadow {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--panel-h) * 0.44);
+  width: calc(var(--panel-w) * (0.92 + 1.28 * var(--pe)));
+  height: calc(var(--panel-w) * 0.2);
+  transform: translate(-50%, 0) translateX(calc(var(--cam-x) * 0.72));
+  pointer-events: none;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(0, 0, 0, 0.82) 0%,
+    rgba(0, 0, 0, 0.42) 42%,
+    rgba(0, 0, 0, 0) 74%
+  );
+  filter: blur(16px);
+  opacity: calc(0.9 - 0.3 * var(--pe));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fold-camera--float {
+    animation: none;
+  }
+}

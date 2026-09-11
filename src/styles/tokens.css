@@ -1,0 +1,30 @@
+:root {
+  color-scheme: dark;
+
+  --ink-0: #05060a;
+  --ink-1: #0a0c11;
+  --ink-2: #101319;
+  --ink-3: #171b22;
+  --ink-4: #232833;
+
+  --line: rgba(255, 255, 255, 0.08);
+  --line-2: rgba(255, 255, 255, 0.14);
+
+  --text-0: #f5f5f7;
+  --text-1: #a2a8b6;
+  --text-2: #6b7280;
+
+  --accent: #6ea8ff;
+  --accent-2: #ffb26b;
+  --accent-3: #78ffd6;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI',
+    'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-soft: cubic-bezier(0.4, 0.14, 0.3, 1);
+
+  --gutter: clamp(20px, 5vw, 72px);
+  --maxw: 1280px;
+}

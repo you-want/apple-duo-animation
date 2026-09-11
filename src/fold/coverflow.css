@@ -1,0 +1,175 @@
+/* ==========================================================================
+   Cover → inner hand-off study.
+
+   Nothing here animates by itself. Every rule below is a read of a channel
+   written by `writeFoldVars`, so this file stays declarative.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Cover display
+   -------------------------------------------------------------------------- */
+
+.cover2 {
+  --u: calc(var(--panel-w) * 0.0453);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: var(--u);
+  line-height: 1.3;
+  color: #fff;
+  letter-spacing: calc(-0.01 * var(--u));
+  background:
+    radial-gradient(90% 46% at 50% -6%, rgba(110, 168, 255, 0.22), rgba(5, 6, 10, 0) 62%),
+    radial-gradient(80% 40% at 10% 100%, rgba(255, 178, 107, 0.14), rgba(5, 6, 10, 0) 60%),
+    #05060a;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cover2__pill {
+  position: absolute;
+  top: calc(1.5 * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(3.4 * var(--u));
+  height: calc(1.05 * var(--u));
+  border-radius: 999px;
+  background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.cover2__time {
+  position: absolute;
+  top: calc(4.2 * var(--u));
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: calc(2.5 * var(--u));
+  font-weight: 300;
+  letter-spacing: calc(-0.045 * var(--u));
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cover2__date {
+  position: absolute;
+  top: calc(7.2 * var(--u));
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: calc(0.8 * var(--u));
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* The hero.
+   Authored at exactly the rect `COVER_ART` describes — 60% of the cover's inner
+   box, centred at 46% height — so the flight layer can start on top of it with
+   no measurement step. It is also centred on x, which is what makes the folded
+   half's mirror a no-op. */
+.cover2__art {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 60%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 10.5%;
+  overflow: hidden;
+  opacity: calc(1 - var(--t-cover-hero));
+  box-shadow: 0 calc(2.2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, 0.45);
+}
+
+.cover2__art .art {
+  position: absolute;
+  inset: 0;
+}
+
+.cover2__meta {
+  position: absolute;
+  top: 64%;
+  left: 8%;
+  right: 8%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.16 * var(--u));
+}
+
+.cover2__meta strong {
+  font-size: calc(1.25 * var(--u));
+  font-weight: 650;
+  letter-spacing: calc(-0.025 * var(--u));
+}
+
+.cover2__meta span {
+  font-size: calc(0.82 * var(--u));
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.cover2__scrub {
+  position: absolute;
+  top: 72.5%;
+  left: 10%;
+  right: 10%;
+  height: calc(0.22 * var(--u));
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.cover2__scrub i {
+  display: block;
+  height: 100%;
+  width: 38%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.cover2__hint {
+  position: absolute;
+  bottom: calc(1.6 * var(--u));
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: calc(0.76 * var(--u));
+  letter-spacing: calc(0.16 * var(--u));
+  color: rgba(255, 255, 255, 0.38);
+}
+
+/* --------------------------------------------------------------------------
+   Inner display — the landing pad
+   -------------------------------------------------------------------------- */
+
+/* Parked at the exact rect the flight lands on (same vars the flight layer
+   reads), and invisible until the hand-off. Because both sides derive from
+   `--fly-x1/y1/w1` there is no second set of numbers to keep in sync. */
+.cf-hero {
+  position: absolute;
+  left: calc(var(--fly-x1) - var(--panel-w));
+  /* Two corrections, both in device px: `.ui-right` lives inside
+     `.panel__screen`, which is inset by the bezel, so its origin is `bezel-y`
+     below the panel's top edge (the x axis is already handled by --panel-w). */
+  top: calc(var(--fly-y1) - var(--bezel-y));
+  width: var(--fly-w1);
+  height: var(--fly-w1);
+  transform: translate(-50%, -50%);
+  border-radius: calc(var(--fly-w1) * 0.105);
+  overflow: hidden;
+  opacity: var(--t-detail-hero);
+  z-index: 3;
+  box-shadow: 0 calc(var(--fly-w1) * 0.09) calc(var(--fly-w1) * 0.24) rgba(0, 0, 0, 0.52);
+}
+
+.cf-hero .art {
+  position: absolute;
+  inset: 0;
+}
+
+/* The right pane assembles as a unit when the artwork lands, instead of
+   drifting in early and leaving a hole where the cover art is about to be. */
+.cf-root .detail,
+.cf-root .detail__body,
+.cf-root .queue {
+  opacity: var(--t-detail-hero);
+}
