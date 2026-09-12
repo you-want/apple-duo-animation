@@ -13,6 +13,7 @@
   --cam-s: 1;
   --cam-rx: 0deg;
   --cam-ry: 0deg;
+  --cam-rz: 0deg;
   --blur: 0px;
 
   --panel-w: 300px;
@@ -86,7 +87,7 @@
   height: var(--panel-h);
   transform-style: preserve-3d;
   transform: translate3d(var(--cam-x), 0, 0) rotateX(var(--cam-rx)) rotateY(var(--cam-ry))
-    scale(var(--cam-s));
+    rotateZ(var(--cam-rz)) scale(var(--cam-s));
   will-change: transform;
 }
 
@@ -230,19 +231,19 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 30px;
+  width: 18px;
   pointer-events: none;
-  opacity: calc(var(--t-crease) * 0.8);
+  opacity: calc(var(--t-crease) * 0.22);
 }
 
 .fold-panel--left .panel__crease {
   right: 0;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.62) 100%);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.28) 100%);
 }
 
 .fold-panel--right .panel__crease {
   left: 0;
-  background: linear-gradient(270deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.62) 100%);
+  background: linear-gradient(270deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.28) 100%);
 }
 
 /* --------------------------------------------------------------------------
@@ -281,7 +282,7 @@
   margin: calc(var(--panel-h) * -0.5) 0 0 calc(var(--panel-w) * -1);
   transform-style: preserve-3d;
   transform: translate3d(var(--cam-x), 0, 0) rotateX(var(--cam-rx)) rotateY(var(--cam-ry))
-    scale(var(--cam-s));
+    rotateZ(var(--cam-rz)) scale(var(--cam-s));
   will-change: transform;
   pointer-events: none;
 }
@@ -398,7 +399,8 @@
     0 0 26px rgba(0, 0, 0, 0.85),
     0 0 2px rgba(0, 0, 0, 0.9),
     inset 0 0 0 1px rgba(255, 255, 255, 0.07);
-  opacity: calc(0.12 + 0.88 * var(--t-spine));
+  opacity: calc(0.02 + 0.72 * var(--t-spine));
+  filter: saturate(calc(0.7 + 0.55 * var(--t-spine))) brightness(calc(0.82 + 0.35 * var(--t-spine)));
 }
 
 /* --------------------------------------------------------------------------
@@ -434,7 +436,7 @@
     rgba(0, 0, 0, 0) 74%
   );
   filter: blur(16px);
-  opacity: calc(0.9 - 0.3 * var(--pe));
+  opacity: calc(0.92 - 0.42 * var(--pe));
 }
 
 @media (prefers-reduced-motion: reduce) {

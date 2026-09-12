@@ -42,8 +42,8 @@ export function windowAt(p: number, a: number, b: number, c: number, d: number) 
  */
 export function creaseAt(p: number) {
   const bent = windowAt(p, 0.02, 0.27, 0.58, 0.95)
-  const residual = 0.14 * smoothstep(0, 0.18, p)
-  return clamp01(residual + 0.86 * bent)
+  const residual = 0.015 * smoothstep(0, 0.28, p)
+  return clamp01(residual + 0.64 * bent)
 }
 
 /* ==========================================================================
@@ -218,6 +218,8 @@ export interface FoldFrame {
   camRx: number
   /** camera yaw — peaks mid-fold so the hinge is never invisible */
   camRy: number
+  /** subtle roll that counters the changing projected mass */
+  camRz: number
   /** cover → inner hand-off progress (0 = parked on the cover, 1 = landed) */
   flyT: number
 }
@@ -241,6 +243,9 @@ export function computeFrame(p: number, size: StageSize): FoldFrame {
   // and settles back to a clean frontal read for the UI at both ends.
   const camRy = 26 * Math.sin(Math.PI * Math.pow(pe, 0.88))
   const camRx = lerp(9, 0, smoothstep(0, 0.8, pe))
+  // A restrained roll gives the hinge a more physical, camera-mounted feel.
+  // It peaks before the panel reaches edge-on, then settles cleanly.
+  const camRz = 2.8 * Math.sin(Math.PI * Math.pow(pe, 0.92)) * (1 - 0.35 * pe)
 
   // Optical centring. The shut device only occupies the left half, and while it
   // swings open the projected span becomes [-panelW, panelW·cos(fold - yaw)].
@@ -249,7 +254,7 @@ export function computeFrame(p: number, size: StageSize): FoldFrame {
   const span = Math.max(0, Math.cos(((fold - camRy) * Math.PI) / 180))
   const camX = 0.5 * panelW * camS * (1 - span)
 
-  return { p: raw, pe, fold, camX, camS, camRx, camRy, flyT: flightAt(raw).t }
+  return { p: raw, pe, fold, camX, camS, camRx, camRy, camRz, flyT: flightAt(raw).t }
 }
 
 /** Device sizing: the open device may never overflow the stage. */
@@ -288,6 +293,7 @@ export function writeFoldVars(el: HTMLElement, p: number, size: StageSize, blur 
   s.setProperty('--cam-s', f.camS.toFixed(4))
   s.setProperty('--cam-rx', `${f.camRx.toFixed(3)}deg`)
   s.setProperty('--cam-ry', `${f.camRy.toFixed(3)}deg`)
+  s.setProperty('--cam-rz', `${f.camRz.toFixed(3)}deg`)
   s.setProperty('--blur', `${blur.toFixed(2)}px`)
   s.setProperty('--t-crease', creaseAt(f.p).toFixed(4))
   const fo = focusAt(f.p)
