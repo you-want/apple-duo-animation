@@ -8,21 +8,14 @@ import { HomeSurface } from '../fold/apps/HomeSurface'
 
 const PRESETS = [
   { label: '180° 外屏', value: 0 },
-  { label: '120° 散焦', value: 0.3 },
-  { label: '66° 对焦中', value: 0.55 },
+  { label: '141° 外屏转走', value: 0.38 },
+  { label: '46° 内屏展开', value: 0.6 },
   { label: '0° 全清晰', value: 1 },
 ]
 
-/**
- * Park the focus pull at any angle and scrub through it by hand.
- *
- * The two meters under the HUD are the point of the section: they show the
- * sharp region growing *out of the hinge* on both halves, on two different
- * schedules. That is the whole animation, and it is invisible at full speed.
- */
 export function HandoffPlayground() {
   const scopeRef = useRef<HTMLDivElement | null>(null)
-  const { ref: stageRef, size } = useStageSize<HTMLDivElement>()
+  const { ref: stageRef, size } = useStageSize<HTMLDivElement>(0.78, 1.46)
   const [auto, setAuto] = useState(false)
   const reveal = useReveal<HTMLDivElement>()
   const revealShell = useReveal<HTMLDivElement>(0.05)
@@ -42,16 +35,16 @@ export function HandoffPlayground() {
       if (!scope) return
       const v = clamp01(next)
       value.current = v
-      const f = writeFoldVars(scope, v, size.current, 0)
+      const f = writeFoldVars(scope, v, size.current, 0, true)
       const fo = focusAt(v)
 
       if (rangeRef.current) rangeRef.current.value = v.toFixed(4)
       if (pOut.current) pOut.current.textContent = v.toFixed(3)
       if (foldOut.current) foldOut.current.textContent = `${f.fold.toFixed(1)}°`
       if (coverOut.current) coverOut.current.textContent = (1 - fo.out).toFixed(2)
-      // Sharpness, not blur: each bar grows away from the hinge.
-      if (leftBar.current) leftBar.current.style.width = `${(fo.b * 100).toFixed(1)}%`
-      if (rightBar.current) rightBar.current.style.width = `${(fo.a * 100).toFixed(1)}%`
+      // Physical left leaf moves; right leaf remains sharp.
+      if (leftBar.current) leftBar.current.style.width = `${(fo.a * 100).toFixed(1)}%`
+      if (rightBar.current) rightBar.current.style.width = `${(fo.b * 100).toFixed(1)}%`
     },
     [size],
   )
@@ -86,8 +79,13 @@ export function HandoffPlayground() {
   useLayoutEffect(() => {
     apply(value.current)
     const onResize = () => apply(value.current)
+    const stage = stageRef.current
+    stage?.addEventListener('fold:resize', onResize)
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    return () => {
+      stage?.removeEventListener('fold:resize', onResize)
+      window.removeEventListener('resize', onResize)
+    }
   }, [apply])
 
   useLayoutEffect(
@@ -112,10 +110,14 @@ export function HandoffPlayground() {
       <div className="wrap">
         <header className="section__head reveal" ref={reveal}>
           <div className="eyebrow">Playground</div>
-          <h2 className="section__title">停在任意一帧，看焦点怎么走。</h2>
+          <h2 className="section__title">停在任意一帧，看两块屏如何交接。</h2>
           <p className="section__deck deck">
-            外屏一直在失焦，两半内屏各自从铰链往外对焦 —— 右半慢半拍，因为它直到 90°
-            之后才把脸转向你。拖动滑块，或者直接在手机上拖动机身。
+            右侧是照片图库，左侧是邮件草稿。展开时先露出图库，再看见左侧邮件；合上时按原路径回到外屏图库。拖动滑块或机身，观察内容怎样随面板交接。
+          </p>
+          <p className="section__deck deck">
+            开合与双栏布局分别参考官网对应场景：<a href="https://www.apple.com/iphone-duo/" target="_blank" rel="noreferrer">Apple iPhone Duo</a>
+            {' · '}<a href="https://www.apple.com/105/media/us/iphone-duo/2026/9305e4b9-72d9-4c05-9381-b572adadd5e5/anim/highlights-display/large.mp4" target="_blank" rel="noreferrer">开合动画参考 ↗</a>
+            {' · '}<a href="https://www.apple.com/v/iphone-duo/a/images/overview/product-stories/versatility/apps_standby__b0akmv815b1e_large.jpg" target="_blank" rel="noreferrer">邮件＋图库布局 ↗</a>
           </p>
         </header>
 
@@ -123,6 +125,7 @@ export function HandoffPlayground() {
           <div className="playground__stage fold-scope" ref={scopeRef} {...drag}>
             <div className="playground__stage-inner" ref={stageRef}>
               <FoldDevice
+                hinge="left"
                 cover={{ tone: 'a', title: 'Nightcall', artist: 'Kavinsky' }}
                 coverNode={<HomeCover />}
               >
@@ -179,7 +182,7 @@ export function HandoffPlayground() {
 
             <div className="pg-block">
               <div className="pg-label mono">
-                清晰区 · 从铰链向外
+                清晰度 · 左侧折面 / 右侧固定面
               </div>
               <div className="pg-focus">
                 <div className="pg-focus__row">

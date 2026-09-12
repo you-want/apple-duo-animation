@@ -1,151 +1,91 @@
-import { Artwork, StatusBar } from '../ui/bits'
+import type { CSSProperties } from 'react'
+import lake from '../../assets/duo/lake.jpg'
+import summit from '../../assets/duo/summit.jpg'
+import forest from '../../assets/duo/forest.jpg'
+import water from '../../assets/duo/water.jpg'
+import morning from '../../assets/duo/morning.jpg'
+import night from '../../assets/duo/night.jpg'
+import valley from '../../assets/duo/valley.jpg'
+import wild from '../../assets/duo/wild.jpg'
 
-interface IconDef {
-  name: string
-  tone: string
-  glyph: string
+type SymbolName = 'close' | 'up' | 'photo' | 'search' | 'check' | 'more' | 'attach' | 'pen' | 'albums' | 'chevron' | 'sparkle'
+const symbols: Record<SymbolName, string> = {
+  close: 'm7 7 10 10M7 17 17 7', up: 'M12 19V5m-6 6 6-6 6 6',
+  photo: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm-1 12 5-5 5 5 3-3 3 3M15 8h.01',
+  search: 'M16 16 21 21M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z',
+  check: 'm5 12 4 4L19 6', more: 'M5 12h.01M12 12h.01M19 12h.01',
+  attach: 'm8 12 6-6a3 3 0 0 1 4 4L9 19a5 5 0 0 1-7-7l9-9m-6 12 9-9',
+  pen: 'm15 4 5 5M4 20l5-1L20 8a3 3 0 0 0-4-4L5 15Z',
+  albums: 'M7 3h10M5 6h14M4 9h16v12H4Z', chevron: 'm14 5-7 7 7 7',
+  sparkle: 'm12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z',
 }
 
-const ICONS: IconDef[] = [
-  { name: 'FaceTime', tone: 'green', glyph: 'video' },
-  { name: '日历', tone: 'red', glyph: 'bar' },
-  { name: 'App Store', tone: 'blue', glyph: 'tri' },
-  { name: '相机', tone: 'slate', glyph: 'ring' },
-  { name: '邮件', tone: 'sky', glyph: 'tri' },
-  { name: '备忘录', tone: 'amber', glyph: 'bar' },
-  { name: '音乐', tone: 'pink', glyph: 'cross' },
-  { name: '地图', tone: 'mint', glyph: 'ring' },
-  { name: '新闻', tone: 'rose', glyph: 'cross' },
-  { name: 'TV', tone: 'ink', glyph: 'video' },
-  { name: '游戏', tone: 'violet', glyph: 'dot' },
-  { name: '照片', tone: 'rainbow', glyph: 'ring' },
+function Symbol({ name }: { name: SymbolName }) {
+  return <svg className="duo-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={symbols[name]} /></svg>
+}
+
+const PHOTOS = [
+  { src: summit, label: '雪山与松林' }, { src: forest, label: '林间小径' },
+  { src: water, label: '湖上的小船' }, { src: valley, label: '穿过山谷' },
+  { src: lake, label: '湖畔的清晨' }, { src: wild, label: '山野与鹿' },
+  { src: morning, label: '晨光中的山峦' }, { src: night, label: '雪山星空' },
+  { src: water, label: '碧绿的湖水', position: '75% 80%' },
 ]
+const SELECTED = 4
 
-const DOCK: IconDef[] = [
-  { name: '', tone: 'sky', glyph: 'dot' },
-  { name: '', tone: 'green', glyph: 'video' },
-  { name: '', tone: 'amber', glyph: 'bar' },
-  { name: '', tone: 'violet', glyph: 'dot' },
-]
+function PhotoShot({ index = SELECTED }: { index?: number }) {
+  const photo = PHOTOS[index]
+  return <img className="duo-photo" src={photo.src} alt={photo.label} draggable={false} style={{ objectPosition: photo.position } as CSSProperties} />
+}
 
-/** One app tile. Everything about it is a gradient plus one abstract glyph. */
-function Icon({ icon }: { icon: IconDef }) {
-  return (
-    <div className="hs__icon">
-      <span className={`hi hi--${icon.tone} hi--${icon.glyph}`} aria-hidden />
-      {icon.name ? <span className="hs__icon-label">{icon.name}</span> : null}
+/** A shared Photos layout keeps the selected image recognizable after opening. */
+export function PhotoLibrary({ cover = false }: { cover?: boolean }) {
+  return <div className={`duo-library${cover ? ' duo-library--cover' : ''}`}>
+    <div className="duo-app-grip" aria-hidden />
+    <header className="duo-library__header">
+      <div className="duo-library__eyebrow"><span>9月 · 周末相簿</span><span className="duo-library__more"><Symbol name="more" /></span></div>
+      <div className="duo-library__title"><strong>山野之间</strong><span className="duo-library__select">选择</span></div>
+      <div className="duo-library__meta"><span>留住光，也留住这一刻。</span><span>24 张照片</span></div>
+    </header>
+    <div className="duo-library__grid">
+      {PHOTOS.map((photo, index) => <div className={`duo-library__shot${index === SELECTED ? ' is-selected' : ''}`} key={photo.label}>
+        <PhotoShot index={index} />
+        {index === SELECTED && <span className="duo-library__check"><Symbol name="check" /></span>}
+      </div>)}
     </div>
-  )
+    <footer className="duo-library__footer">
+      <div className="duo-library__tabs"><span className="is-active"><Symbol name="photo" />图库</span><span><Symbol name="albums" />相簿</span><span><Symbol name="search" />搜索</span></div>
+      <div className="duo-home-line" aria-hidden />
+    </footer>
+    {cover && <i className="duo-library__camera" aria-hidden />}
+  </div>
 }
 
-/**
- * The widget stack — the one piece of layout that is *literally shared*.
- *
- * It is dropped in twice: once inside the cover display, and once in the left
- * half of the inner canvas, which is the half sitting back-to-back with the
- * cover. The two are never visible at the same time (the panel is between
- * them), but they occupy the same coordinates, so when the device opens what
- * the eye sees is the same picture — only the focus has changed.
- */
-export function WidgetStack() {
-  return (
-    <div className="hw">
-      <div className="hw__np">
-        <div className="hw__art">
-          <Artwork tone="c" />
-        </div>
-        <div className="hw__npmeta">
-          <span className="hw__eyebrow">Up next</span>
-          <strong>Nightcall</strong>
-          <span>Kavinsky · 3:58</span>
-        </div>
-        <div className="hw__bar" aria-hidden>
-          <i />
-        </div>
-      </div>
-
-      <div className="hw__agenda">
-        <div className="hw__agenda-head">
-          <span>10月9日 周三</span>
-          <b>3</b>
-        </div>
-        <div className="hw__row">
-          <b>10:30</b>
-          <span>设计评审</span>
-        </div>
-        <div className="hw__row">
-          <b>14:00</b>
-          <span>与 Apple 同步</span>
-        </div>
-        <div className="hw__row">
-          <b>17:30</b>
-          <span>去健身房</span>
-        </div>
-      </div>
+function MailDraft() {
+  return <div className="duo-mail">
+    <div className="duo-app-grip" aria-hidden />
+    <header className="duo-mail__header"><span className="duo-mail__cancel">取消</span><strong>新邮件</strong><span className="duo-mail__send"><Symbol name="up" /></span></header>
+    <div className="duo-mail__fields">
+      <div><span>收件人</span><b className="duo-mail__recipient"><i>林</i>林同学</b></div>
+      <div><span>发件人</span><b>我</b><span className="duo-mail__cc">抄送 / 密送</span></div>
+      <div className="duo-mail__subject"><span>主题</span><b>把山里的清晨，寄给你</b></div>
     </div>
-  )
+    <div className="duo-mail__body"><p>这张湖边的照片，是我最喜欢的一张。<br />下次，我们一起去。</p>
+      <figure className="duo-mail__attachment"><PhotoShot /><figcaption><span>湖畔的清晨</span><span>HEIC · 2.4 MB</span></figcaption></figure>
+    </div>
+    <footer className="duo-mail__footer"><span className="duo-mail__format">Aa</span><Symbol name="photo" /><Symbol name="attach" /><Symbol name="pen" /><div className="duo-home-line" aria-hidden /></footer>
+  </div>
 }
 
-/** Everything the inner canvas draws, on both halves, in device coordinates. */
-function HomeBody() {
-  return (
-    <>
-      <StatusBar />
-
-      {/* ---- left half: the cover display's own layout ---- */}
-      <div className="hs__col hs__col--a">
-        <WidgetStack />
-      </div>
-
-      {/* ---- right half: where that layout grows into a full screen ---- */}
-      <div className="hs__col hs__col--b">
-        <div className="hs__widgets">
-          <div className="hs__w hs__w--weather">
-            <span className="hw__eyebrow">San Francisco</span>
-            <strong>54°</strong>
-            <span>多云 · 51°–58°</span>
-          </div>
-          <div className="hs__w hs__w--map">
-            <span className="hw__eyebrow">Channel</span>
-            <i aria-hidden />
-          </div>
-        </div>
-
-        <div className="hs__grid">
-          {ICONS.map((i) => (
-            <Icon key={i.name} icon={i} />
-          ))}
-        </div>
-
-        <div className="hs__dock">
-          {DOCK.map((d, i) => (
-            <Icon key={i} icon={d} />
-          ))}
-        </div>
-      </div>
-    </>
-  )
+/** Distinct applications, cropped by the physical leaves on one coordinate plane. */
+function InnerWorkspace() {
+  return <div className="duo-workspace">
+    <div className="duo-workspace__pane duo-workspace__pane--mail"><MailDraft /></div>
+    <div className="duo-workspace__pane duo-workspace__pane--photos"><PhotoLibrary /></div>
+    <div className="duo-workspace__divider" aria-hidden />
+  </div>
 }
 
-/**
- * Inner display for the focus study.
- *
- * Two stacked copies of the same screen. The lower one is sharp; the upper one
- * is the same markup again, blurred and masked into a band that retreats
- * toward the hinge. Which scalar drives the retreat depends on which panel the
- * copy ended up in — that is decided in CSS, not here, so this component stays
- * a pure function of the fold.
- */
 export function HomeSurface() {
-  return (
-    <div className="hs">
-      <HomeBody />
-
-      <div className="hs__band" aria-hidden>
-        <div className="hs__band-body">
-          <HomeBody />
-        </div>
-      </div>
-    </div>
-  )
+  return <div className="duo-focus"><InnerWorkspace /><div className="duo-focus__soft" aria-hidden><InnerWorkspace /></div></div>
 }

@@ -11,39 +11,42 @@ export interface FoldDeviceProps {
   coverNode?: ReactNode
   /** Shared element parked in camera space — see `TransferLayer`. */
   flight?: ReactNode
+  hinge?: 'left' | 'right'
   float?: boolean
 }
 
-export function FoldDevice({ children, cover, coverNode, flight, float = false }: FoldDeviceProps) {
+export function FoldDevice({ children, cover, coverNode, flight, hinge = 'right', float = false }: FoldDeviceProps) {
+  const outer = (
+    <div className="panel__outer">
+      <div className="panel__outer-inner">
+        {coverNode ?? <CoverScreen tone={cover.tone} title={cover.title} artist={cover.artist} />}
+      </div>
+    </div>
+  )
   return (
-    <div className="fold-stage">
+    <div className={`fold-stage${hinge === 'left' ? ' fold-stage--reference' : ''}`}>
       <div className="fold-ambient" aria-hidden />
       <div className="fold-shadow" aria-hidden />
 
       <div className={float ? 'fold-camera fold-camera--float' : 'fold-camera'}>
-        {/* Left half — rigid, never moves. */}
+        {/* Left leaf; the reference study hinges this leaf. */}
         <div className="fold-panel fold-panel--left">
           <div className="panel__screen">
             <div className="panel__screen-inner">{children}</div>
             <div className="panel__crease" aria-hidden />
             <div className="panel__gloss" aria-hidden />
           </div>
+          {hinge === 'left' && outer}
         </div>
 
-        {/* Right half — the hinge. Everything about this element is `--fold`. */}
+        {/* Right leaf; the original studies hinge this leaf. */}
         <div className="fold-panel fold-panel--right">
           <div className="panel__screen">
             <div className="panel__screen-inner">{children}</div>
             <div className="panel__crease" aria-hidden />
             <div className="panel__gloss" aria-hidden />
           </div>
-          <div className="panel__outer">
-            <div className="panel__outer-inner">
-              {coverNode ?? (
-                <CoverScreen tone={cover.tone} title={cover.title} artist={cover.artist} />
-              )}
-            </div>
-          </div>
+          {hinge === 'right' && outer}
         </div>
 
         <div className="fold-hinge" aria-hidden />

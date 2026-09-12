@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { computePanelSize } from './mapping'
+import { computePanelSize, PANEL_RATIO } from './mapping'
 import type { StageSize } from './mapping'
 
 /**
@@ -7,7 +7,7 @@ import type { StageSize } from './mapping'
  * Perspective is derived from the panel width so the 3D reads identically
  * at every viewport size.
  */
-export function useStageSize<T extends HTMLElement>(density = 0.78) {
+export function useStageSize<T extends HTMLElement>(density = 0.78, ratio = PANEL_RATIO) {
   const ref = useRef<T | null>(null)
   const size = useRef<StageSize>({ panelW: 300, panelH: 618, closedScale: 1 })
 
@@ -21,7 +21,7 @@ export function useStageSize<T extends HTMLElement>(density = 0.78) {
       // Layout intent comes from CSS, so a narrow viewport can ask the device to
       // fill more of its width without touching the engine.
       const fill = parseFloat(getComputedStyle(el).getPropertyValue('--fold-fill')) || 0.42
-      const next = computePanelSize(rect.width, rect.height, density, fill)
+      const next = computePanelSize(rect.width, rect.height, density, fill, ratio)
       size.current = next
       el.style.setProperty('--panel-w', `${next.panelW.toFixed(2)}px`)
       el.style.setProperty('--panel-h', `${next.panelH.toFixed(2)}px`)
@@ -33,7 +33,7 @@ export function useStageSize<T extends HTMLElement>(density = 0.78) {
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [density])
+  }, [density, ratio])
 
   return { ref, size }
 }

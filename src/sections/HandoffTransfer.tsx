@@ -13,45 +13,40 @@ const CHAPTERS = [
   {
     id: 'outer',
     index: '00',
-    title: '两块屏，背靠背',
-    body: '合上时朝向你的是外屏。它和「会转动的那一半内屏」共用同一块玻璃的两个面 —— 所以交接不需要搬运内容，只需要把焦点交过去。',
+    title: '合上，继续看照片',
+    body: '外屏是一页正在浏览的图库。展开后，图库延续到右侧内屏，左侧多出一封正在编辑的邮件。',
     tag: 'cover display · 180°',
     range: [0, 0, 0.05, 0.11] as const,
   },
   {
     id: 'defocus',
     index: '01',
-    title: '散焦',
-    body: '机身开始展开。外屏不是淡出，是失焦：它仍然在，只是不再锐利。等它转到背面时，已经没有一块清晰的像素需要被藏起来。',
+    title: '外屏随折面转走',
+    body: '左侧折面绕铰链打开，外屏随之转向背面。内容保留在玻璃上，右侧内屏从后方逐渐露出。',
     tag: 'defocus · 180° → 120°',
     range: [0.12, 0.2, 0.3, 0.38] as const,
   },
   {
     id: 'sweep',
     index: '02',
-    title: '从铰链向外对焦',
-    body: '内屏露出来的部分带着一层模糊。清晰区从铰链开始生长 —— 因为玻璃是绕着铰链转的，边缘走得最远，也就最晚对上焦。',
+    title: '右侧先清晰，左侧后到位',
+    body: '右侧图库先从外屏后方露出，左侧邮件随折面转过来。内容留在各自面板内，柔焦区域随展开逐渐退向左边缘。',
     tag: 'focus sweep · 120° → 20°',
     range: [0.4, 0.48, 0.62, 0.7] as const,
   },
   {
     id: 'open',
     index: '03',
-    title: '同一张画面',
-    body: '0° 时两边都清楚了。外屏上那组 widget 就是内屏左半的那组 widget —— 位置没变、内容没变，变的是它现在有两块面板的宽度可以铺开。',
+    title: '左边写邮件，右边选照片',
+    body: '两边是不同的应用：左侧保留邮件草稿，右侧展示照片图库。选中的照片与邮件附件相同，参考官网 Split View 的并排布局。',
     tag: 'in focus · 0°',
     range: [0.76, 0.84, 1.4, 1.5] as const,
   },
 ]
 
-/**
- * Study 03. Same engine as the other two scenes, but the channel that matters
- * is sharpness rather than position: the cover display defocuses on its way
- * out, and each half of the inner display pulls focus on its own schedule.
- */
 export function HandoffTransfer() {
   const scopeRef = useRef<HTMLElement | null>(null)
-  const { ref: stageRef, size } = useStageSize<HTMLDivElement>()
+  const { ref: stageRef, size } = useStageSize<HTMLDivElement>(0.78, 1.46)
   const pOut = useRef<HTMLSpanElement | null>(null)
   const foldOut = useRef<HTMLSpanElement | null>(null)
   const focusOut = useRef<HTMLSpanElement | null>(null)
@@ -64,7 +59,7 @@ export function HandoffTransfer() {
     const apply = (p: number) => {
       // Motion blur is deliberately off: this scene's blur is the subject, and
       // two kinds of blur on the same glass would read as a smudge.
-      const f = writeFoldVars(scope, p, size.current, 0)
+      const f = writeFoldVars(scope, p, size.current, 0, true)
       const fo = focusAt(p)
 
       CHAPTERS.forEach((c, i) => {
@@ -81,12 +76,14 @@ export function HandoffTransfer() {
       }
       if (modeOut.current) {
         modeOut.current.textContent =
-          p < 0.06 ? 'cover, sharp' : p < 0.34 ? 'cover, defocusing' : p < 0.9 ? 'pull focus' : 'in focus'
+          p < 0.28 ? 'cover, sharp' : p < 0.5 ? 'cover turning' : p < 0.9 ? 'left settling' : 'in focus'
       }
     }
 
     const state = { p: 0 }
     const onResize = () => apply(state.p)
+    const stage = stageRef.current
+    stage?.addEventListener('fold:resize', onResize)
     window.addEventListener('resize', onResize)
 
     const ctx = gsap.context(() => {
@@ -110,6 +107,7 @@ export function HandoffTransfer() {
     ScrollTrigger.refresh()
 
     return () => {
+      stage?.removeEventListener('fold:resize', onResize)
       window.removeEventListener('resize', onResize)
       ctx.revert()
     }
@@ -118,7 +116,7 @@ export function HandoffTransfer() {
   return (
     <section className="narrative fold-scope" ref={scopeRef} id="handoff">
       <div className="narrative__stage" ref={stageRef}>
-        <FoldDevice float cover={{ tone: 'a', title: 'Nightcall', artist: 'Kavinsky' }} coverNode={<HomeCover />}>
+        <FoldDevice hinge="left" cover={{ tone: 'a', title: 'Nightcall', artist: 'Kavinsky' }} coverNode={<HomeCover />}>
           <HomeSurface />
         </FoldDevice>
       </div>
@@ -163,8 +161,8 @@ export function HandoffTransfer() {
           <b ref={foldOut}>180.0°</b>
         </div>
         <div className="hud__row">
-          <span>focus out · a · b</span>
-          <b ref={focusOut}>0.00 · 0.00 · 0.00</b>
+          <span>blur out · sharp L · R</span>
+          <b ref={focusOut}>0.00 · 0.00 · 1.00</b>
         </div>
         <div className="hud__row">
           <span>hand-off</span>
